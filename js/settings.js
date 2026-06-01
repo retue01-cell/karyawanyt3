@@ -47,7 +47,7 @@ const settings = {
     },
 
     normalizeTime(val) {
-        if (!val) return '09:00';
+        if (!val || val === '' || val === null || val === undefined) return null;
         if (/^\d{2}:\d{2}$/.test(val)) return val;
         if (val instanceof Date) {
             const h = String(val.getHours()).padStart(2, '0');
@@ -56,7 +56,7 @@ const settings = {
         }
         const str = String(val);
         if (str.includes('T')) {
-            try { const d = new Date(str); const h = String(d.getUTCHours()+7).padStart(2,'0'); const m = String(d.getUTCMinutes()).padStart(2,'0'); return h+':'+m; } catch(e) { return '09:00'; }
+            try { const d = new Date(str); const h = String(d.getUTCHours()+7).padStart(2,'0'); const m = String(d.getUTCMinutes()).padStart(2,'0'); return h+':'+m; } catch(e) { return null; }
         }
         return str;
     },
@@ -181,32 +181,19 @@ const settings = {
         if (!container) return;
         if (this.shifts.length === 0) { container.innerHTML = '<p class="empty-state">Belum ada shift</p>'; return; }
         container.innerHTML = this.shifts.map((shift, index) => {
-            const startTime = shift.startTime ? shift.startTime : 'Error';
-            const endTime = shift.endTime ? shift.endTime : 'Error';
+            const startTime = shift.startTime ? shift.startTime : '';
+            const endTime = shift.endTime ? shift.endTime : '';
+            const startTimeError = !shift.startTime;
+            const endTimeError = !shift.endTime;
             return `
             <div class="shift-item" data-index="${index}">
                 <div class="shift-input-group"><label>Nama Shift</label><input type="text" value="${shift.name || 'Shift Baru'}" placeholder="Nama Shift" onchange="settings.updateShift(${index}, 'name', this.value)"></div>
-                <div class="shift-input-group"><label>Jam Masuk</label><input type="time" value="${startTime === 'Error' ? '' : startTime}" onchange="settings.updateShift(${index}, 'startTime', this.value)"></div>
-                <div class="shift-input-group"><label>Jam Pulang</label><input type="time" value="${endTime === 'Error' ? '' : endTime}" onchange="settings.updateShift(${index}, 'endTime', this.value)"></div>
+                <div class="shift-input-group"><label>Jam Masuk</label><input type="time" value="${startTime}" onchange="settings.updateShift(${index}, 'startTime', this.value)">${startTimeError ? '<span class="error-text" style="color:red;font-size:12px;display:block;">Error: Jam masuk tidak tersedia di database</span>' : ''}</div>
+                <div class="shift-input-group"><label>Jam Pulang</label><input type="time" value="${endTime}" onchange="settings.updateShift(${index}, 'endTime', this.value)">${endTimeError ? '<span class="error-text" style="color:red;font-size:12px;display:block;">Error: Jam pulang tidak tersedia di database</span>' : ''}</div>
                 <button type="button" class="btn-delete-shift" onclick="settings.deleteShift(${index})"><i class="fas fa-trash"></i></button>
             </div>
         `;
         }).join('');
-        // Add error indicators for missing times
-        this.shifts.forEach((shift, index) => {
-            if (!shift.startTime || !shift.endTime) {
-                const shiftItem = container.querySelector(`[data-index="${index}"]`);
-                if (shiftItem) {
-                    const errorMsg = document.createElement('span');
-                    errorMsg.className = 'error-text';
-                    errorMsg.style.color = 'red';
-                    errorMsg.style.fontSize = '12px';
-                    errorMsg.textContent = !shift.startTime && !shift.endTime ? 'Error: Jam masuk dan jam pulang tidak tersedia' : 
-                                           !shift.startTime ? 'Error: Jam masuk tidak tersedia' : 'Error: Jam pulang tidak tersedia';
-                    shiftItem.appendChild(errorMsg);
-                }
-            }
-        });
     },
 
     async addShift() {
