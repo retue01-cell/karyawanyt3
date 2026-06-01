@@ -87,7 +87,50 @@ const settings = {
         days.forEach(day => { workdays[day] = document.getElementById(`day-${day}`).checked; });
         await api.saveSetting('working_days', JSON.stringify(workdays));
         storage.set('working_days', workdays);
+        
+        // Update all shift schedules: set non-working days to 'Libur'
+        this.updateSchedulesForWorkdaysChange(workdays);
+        
         toast.success('Hari kerja disimpan');
+    },
+
+    updateSchedulesForWorkdaysChange(workdays) {
+        const dayMap = { 'senin': 1, 'selasa': 2, 'rabu': 3, 'kamis': 4, 'jumat': 5, 'sabtu': 6, 'minggu': 0 };
+        const scheduleData = storage.get('shift_schedule', {});
+        let hasChanges = false;
+        
+        Object.keys(scheduleData).forEach(monthKey => {
+            const monthData = scheduleData[monthKey];
+            const [year, month] = monthKey.split('-').map(Number);
+            const daysInMonth = new Date(year, month, 0).getDate();
+            
+            Object.keys(monthData).forEach(empId => {
+                const empSchedule = monthData[empId];
+                
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const date = new Date(year, month - 1, day);
+                    const dayOfWeek = date.getDay();
+                    const dayName = Object.keys(dayMap).find(key => dayMap[key] === dayOfWeek);
+                    
+                    if (dayName && workdays[dayName] === false) {
+                        if (empSchedule[day] !== 'Libur') {
+                            empSchedule[day] = 'Libur';
+                            hasChanges = true;
+                        }
+                    }
+                }
+            });
+        });
+        
+        if (hasChanges) {
+            storage.set('shift_schedule', scheduleData);
+            // Refresh the current view if we're on the shift schedule page
+            if (window.shiftSchedule) {
+                window.shiftSchedule.renderTable();
+                window.shiftSchedule.updateSummary();
+            }
+            toast.info('Jadwal shift otomatis diperbarui untuk hari yang bukan hari kerja');
+        }
     },
 
     async saveSystemSettings() {
