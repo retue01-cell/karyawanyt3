@@ -181,17 +181,32 @@ const settings = {
         if (!container) return;
         if (this.shifts.length === 0) { container.innerHTML = '<p class="empty-state">Belum ada shift</p>'; return; }
         container.innerHTML = this.shifts.map((shift, index) => {
-            const startTime = shift.startTime || '09:00';
-            const endTime = shift.endTime || '18:00';
+            const startTime = shift.startTime ? shift.startTime : 'Error';
+            const endTime = shift.endTime ? shift.endTime : 'Error';
             return `
             <div class="shift-item" data-index="${index}">
                 <div class="shift-input-group"><label>Nama Shift</label><input type="text" value="${shift.name || 'Shift Baru'}" placeholder="Nama Shift" onchange="settings.updateShift(${index}, 'name', this.value)"></div>
-                <div class="shift-input-group"><label>Jam Masuk</label><input type="time" value="${startTime}" onchange="settings.updateShift(${index}, 'startTime', this.value)"></div>
-                <div class="shift-input-group"><label>Jam Pulang</label><input type="time" value="${endTime}" onchange="settings.updateShift(${index}, 'endTime', this.value)"></div>
+                <div class="shift-input-group"><label>Jam Masuk</label><input type="time" value="${startTime === 'Error' ? '' : startTime}" onchange="settings.updateShift(${index}, 'startTime', this.value)"></div>
+                <div class="shift-input-group"><label>Jam Pulang</label><input type="time" value="${endTime === 'Error' ? '' : endTime}" onchange="settings.updateShift(${index}, 'endTime', this.value)"></div>
                 <button type="button" class="btn-delete-shift" onclick="settings.deleteShift(${index})"><i class="fas fa-trash"></i></button>
             </div>
         `;
         }).join('');
+        // Add error indicators for missing times
+        this.shifts.forEach((shift, index) => {
+            if (!shift.startTime || !shift.endTime) {
+                const shiftItem = container.querySelector(`[data-index="${index}"]`);
+                if (shiftItem) {
+                    const errorMsg = document.createElement('span');
+                    errorMsg.className = 'error-text';
+                    errorMsg.style.color = 'red';
+                    errorMsg.style.fontSize = '12px';
+                    errorMsg.textContent = !shift.startTime && !shift.endTime ? 'Error: Jam masuk dan jam pulang tidak tersedia' : 
+                                           !shift.startTime ? 'Error: Jam masuk tidak tersedia' : 'Error: Jam pulang tidak tersedia';
+                    shiftItem.appendChild(errorMsg);
+                }
+            }
+        });
     },
 
     async addShift() {
