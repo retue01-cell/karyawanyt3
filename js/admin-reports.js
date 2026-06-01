@@ -52,17 +52,22 @@ const adminReports = {
         }
         await this.loadData();
         this.bindLeaveEvents();
-        if (!this.filters.leave.month) {
-            const today = new Date();
-            this.filters.leave.month = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-            const monthInput = document.getElementById('leave-month');
-            if (monthInput) monthInput.value = this.filters.leave.month;
-        }
+        // Default filter kosong agar menampilkan semua data
+        this.filters.leave.month = '';
+        this.filters.leave.type = '';
+        this.filters.leave.status = '';
+        const monthInput = document.getElementById('leave-month');
+        if (monthInput) monthInput.value = '';
+        const typeInput = document.getElementById('leave-type-filter');
+        if (typeInput) typeInput.value = '';
+        const statusInput = document.getElementById('leave-status-filter');
+        if (statusInput) statusInput.value = '';
         this.renderLeaveReports();
     },
 
     async loadData() {
         try {
+            console.log('🔄 Loading data from API...');
             const [empResult, jurnalResult, leaveResult, izinResult, attResult] = await Promise.all([
                 api.getEmployees(),
                 api.getAllJournals(),
@@ -70,6 +75,9 @@ const adminReports = {
                 api.getAllIzin(),
                 api.getAllAttendance()
             ]);
+            console.log('📡 API Results - Employees:', empResult);
+            console.log('📡 API Results - Leaves:', leaveResult);
+            console.log('📡 API Results - Izin:', izinResult);
             this.rawEmployees = empResult.data || [];
             this.rawJournals = jurnalResult.data || [];
             this.rawLeaves = leaveResult.data || [];
@@ -129,6 +137,7 @@ const adminReports = {
 
         // Build leaveData (cuti + izin) dengan monthYear
         this.leaveData = [];
+        console.log('📋 Processing rawLeaves:', this.rawLeaves.length, 'items');
         this.rawLeaves.forEach(l => {
             const emp = empMap.get(String(l.userId));
             if (emp) {
@@ -152,6 +161,7 @@ const adminReports = {
                 console.warn(`⚠️ Leave dengan userId ${l.userId} tidak ditemukan di Employees`);
             }
         });
+        console.log('📋 Processing rawIzin:', this.rawIzin.length, 'items');
         this.rawIzin.forEach(i => {
             const emp = empMap.get(String(i.userId));
             if (emp) {
@@ -176,7 +186,7 @@ const adminReports = {
             }
         });
         this.leaveData.sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt));
-        console.log('✅ Final leaveData (combined):', this.leaveData);
+        console.log('✅ Final leaveData (combined):', this.leaveData.length, 'items');
     },
 
     getLeaveTypeLabel(type) {
@@ -258,16 +268,19 @@ const adminReports = {
         const month = document.getElementById('leave-month');
         if (month) month.onchange = (e) => {
             this.filters.leave.month = e.target.value;
+            console.log('🔍 Filter month changed to:', this.filters.leave.month);
             this.renderLeaveReports();
         };
         const type = document.getElementById('leave-type-filter');
         if (type) type.onchange = (e) => {
             this.filters.leave.type = e.target.value;
+            console.log('🔍 Filter type changed to:', this.filters.leave.type);
             this.renderLeaveReports();
         };
         const status = document.getElementById('leave-status-filter');
         if (status) status.onchange = (e) => {
             this.filters.leave.status = e.target.value;
+            console.log('🔍 Filter status changed to:', this.filters.leave.status);
             this.renderLeaveReports();
         };
     },
@@ -307,6 +320,7 @@ const adminReports = {
 
     getFilteredLeave() {
         let data = [...this.leaveData];
+        // Filter hanya jika nilai filter tidak kosong
         if (this.filters.leave.month && this.filters.leave.month !== '') {
             data = data.filter(item => item.monthYear === this.filters.leave.month);
         }
@@ -316,12 +330,15 @@ const adminReports = {
             } else if (this.filters.leave.type === 'izin') {
                 data = data.filter(item => item.type === 'izin');
             } else if (this.filters.leave.type === 'sakit') {
-                data = data.filter(item => item.type === 'izin' && item.typeLabel.toLowerCase().includes('sakit'));
+                data = data.filter(item => item.type === 'izin' && item.typeLabel && typeof item.typeLabel === 'string' && item.typeLabel.toLowerCase().includes('sakit'));
             }
         }
         if (this.filters.leave.status && this.filters.leave.status !== '') {
             data = data.filter(item => item.status === this.filters.leave.status);
         }
+        console.log('📊 getFilteredLeave - filters:', this.filters.leave);
+        console.log('📊 getFilteredLeave - leaveData count:', this.leaveData.length);
+        console.log('📊 getFilteredLeave - filtered count:', data.length);
         return data;
     },
 
@@ -373,7 +390,7 @@ const adminReports = {
                 <td>${row.date || '-'}</div>
                 <td>${this.escapeHtml(row.name)}</div>
                 <td>${this.escapeHtml(row.department)}</div>
-                <td>${(row.tasks || '-').substring(0, 40)}${(row.tasks || '').length > 40 ? '...' : ''}</div>
+                <td>${row.tasks && typeof row.tasks === 'string' ? (row.tasks.length > 40 ? row.tasks.substring(0, 40) + '...' : row.tasks) : '-'}</td>
                 <td>${row.photo ? `<img src="${row.photo}" class="jurnal-thumbnail" onclick="adminReports.viewPhoto('${row.photo}')" style="width:40px;height:40px;object-fit:cover;border-radius:6px;cursor:pointer;">` : '-'}</div>
                 <td><span class="status-badge ${row.status}">${row.status === 'filled' ? 'Terisi' : 'Kosong'}</span></div>
                 <td>
@@ -389,7 +406,7 @@ const adminReports = {
                     <div class="mobile-card-header"><span class="mobile-card-title">${this.escapeHtml(row.name)}</span><span class="status-badge ${row.status}">${row.status === 'filled' ? 'Terisi' : 'Kosong'}</span></div>
                     <div class="mobile-card-row"><span>Tanggal:</span> ${row.date}</div>
                     <div class="mobile-card-row"><span>Departemen:</span> ${row.department}</div>
-                    <div class="mobile-card-row"><span>Tugas:</span> ${(row.tasks || '-').substring(0, 50)}</div>
+                    <div class="mobile-card-row"><span>Tugas:</span> ${row.tasks && typeof row.tasks === 'string' ? (row.tasks.length > 50 ? row.tasks.substring(0, 50) + '...' : row.tasks) : '-'}</div>
                     <div style="display:flex; gap:8px; margin-top:8px;">
                         <button class="btn-primary btn-sm" onclick="adminReports.viewJurnalDetail('${this.escapeHtml(row.name)}', '${row.date}')">Lihat</button>
                         <button class="btn-sm" style="background:#EF4444;color:white;" onclick="adminReports.deleteJournalItem('${row.id}')">Hapus</button>
@@ -407,7 +424,10 @@ const adminReports = {
         }
         const data = this.getFilteredLeave();
         const statusLabels = { pending: 'Menunggu', approved: 'Disetujui', rejected: 'Ditolak' };
-        console.log('📊 Data untuk renderLeaveReports (setelah filter):', data);
+        console.log('📊 Data untuk renderLeaveReports (setelah filter):', data.length, 'items');
+        console.log('📊 leaveData total:', this.leaveData.length);
+        console.log('📊 rawLeaves:', this.rawLeaves.length);
+        console.log('📊 rawIzin:', this.rawIzin.length);
         if (data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px;">Tidak ada data cuti/izin untuk filter yang dipilih</div></tr>';
             const mobile = document.getElementById('leave-mobile-cards');
@@ -428,7 +448,7 @@ const adminReports = {
                     <td>${item.typeLabel}</div>
                     <td>${item.dates}</div>
                     <td>${item.duration} hari</div>
-                    <td>${item.reason.substring(0, 40)}${item.reason.length > 40 ? '...' : ''}</div>
+                    <td>${item.reason && typeof item.reason === 'string' ? (item.reason.length > 40 ? item.reason.substring(0, 40) + '...' : item.reason) : '-'}</td>
                     <td><span class="status-badge ${item.status}">${statusLabels[item.status]}</span></div>
                     <td>${approveReject}${deleteBtn}${viewBtn}</div>
                 </tr>
@@ -450,7 +470,7 @@ const adminReports = {
                         <div class="mobile-card-row"><span>Jenis:</span> ${item.typeLabel}</div>
                         <div class="mobile-card-row"><span>Tanggal:</span> ${item.dates}</div>
                         <div class="mobile-card-row"><span>Durasi:</span> ${item.duration} hari</div>
-                        <div class="mobile-card-row"><span>Alasan:</span> ${item.reason.substring(0, 50)}</div>
+                        <div class="mobile-card-row"><span>Alasan:</span> ${item.reason && typeof item.reason === 'string' ? (item.reason.length > 50 ? item.reason.substring(0, 50) + '...' : item.reason) : '-'}</div>
                         <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
                             ${approveReject}
                             ${deleteBtn}
@@ -536,7 +556,7 @@ const adminReports = {
                 <p><strong>Jenis:</strong> ${type === 'cuti' ? 'Cuti' : 'Izin'}</p>
                 <p><strong>Tanggal:</strong> ${item.startDate ? `${item.startDate} - ${item.endDate}` : item.date}</p>
                 <p><strong>Durasi:</strong> ${item.duration} hari</p>
-                <p><strong>Alasan:</strong><br>${item.reason}</p>
+                <p><strong>Alasan:</strong><br>${item.reason || '-'}</p>
                 ${item.verificationPhoto ? `<p><strong>Foto Verifikasi:</strong><br><img src="${item.verificationPhoto}" style="max-width:100%; max-height:200px; border-radius:8px;"></p>` : ''}
                 <p><strong>Status:</strong> ${item.status === 'pending' ? 'Menunggu' : (item.status === 'approved' ? 'Disetujui' : 'Ditolak')}</p>
             </div>
