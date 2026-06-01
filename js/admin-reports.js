@@ -448,7 +448,7 @@ const adminReports = {
                     <td>${item.typeLabel}</div>
                     <td>${item.dates}</div>
                     <td>${item.duration} hari</div>
-                    <td>${item.reason.substring(0, 40)}${item.reason.length > 40 ? '...' : ''}</div>
+                    <td>${item.reason ? item.reason.substring(0, 40) + (item.reason.length > 40 ? '...' : '') : '-'}</div>
                     <td><span class="status-badge ${item.status}">${statusLabels[item.status]}</span></div>
                     <td>${approveReject}${deleteBtn}${viewBtn}</div>
                 </tr>
@@ -470,7 +470,7 @@ const adminReports = {
                         <div class="mobile-card-row"><span>Jenis:</span> ${item.typeLabel}</div>
                         <div class="mobile-card-row"><span>Tanggal:</span> ${item.dates}</div>
                         <div class="mobile-card-row"><span>Durasi:</span> ${item.duration} hari</div>
-                        <div class="mobile-card-row"><span>Alasan:</span> ${item.reason.substring(0, 50)}</div>
+                        <div class="mobile-card-row"><span>Alasan:</span> ${item.reason ? item.reason.substring(0, 50) : '-'}</div>
                         <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
                             ${approveReject}
                             ${deleteBtn}
