@@ -163,7 +163,7 @@ function getShiftsData() {
  * Convert a Sheets time value (Date or string) to "HH:mm" format.
  */
 function formatTimeValue(val) {
-  if (!val) return '09:00';
+  if (!val || val === '' || val === null) return '';
   // Already a proper string
   if (typeof val === 'string' && /^\d{2}:\d{2}$/.test(val)) return val;
   // If it's a Date object from Sheets
@@ -180,7 +180,7 @@ function formatTimeValue(val) {
       const h = String(d.getHours()).padStart(2, '0');
       const m = String(d.getMinutes()).padStart(2, '0');
       return h + ':' + m;
-    } catch(e) { return '09:00'; }
+    } catch(e) { return ''; }
   }
   return str;
 }
