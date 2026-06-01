@@ -38,6 +38,10 @@ const settings = {
             const company = storage.get('company', { name: '', logo: '' });
             document.getElementById('company-name').value = company.name;
             document.getElementById('company-logo').value = company.logo;
+            // Load working days from local storage as fallback
+            const workdays = storage.get('working_days', { senin: true, selasa: true, rabu: true, kamis: true, jumat: true, sabtu: false, minggu: false });
+            const days = ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'];
+            days.forEach(day => { const el = document.getElementById(`day-${day}`); if (el) el.checked = workdays[day] !== false; });
         }
     },
 
@@ -82,6 +86,7 @@ const settings = {
         const workdays = {};
         days.forEach(day => { workdays[day] = document.getElementById(`day-${day}`).checked; });
         await api.saveSetting('working_days', JSON.stringify(workdays));
+        storage.set('working_days', workdays);
         toast.success('Hari kerja disimpan');
     },
 
