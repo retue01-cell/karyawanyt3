@@ -1,3 +1,1 @@
-(js/admin-reports.js)
-
-Since the only change is a modification to a JavaScript source file and there are no build artifacts, dependency directories, temporary files, or other items that should be ignored, no .gitignore rules are needed.
+Nothing should be ignored since the changes only include JavaScript source files (.js) which are legitimate source code files that should be tracked in version control.
